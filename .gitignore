@@ -12,3 +12,10 @@
 .vs/HAL9000/v16/.suo
 .vs/HAL9000/v16/Browse.VC.db
 .vs/HAL9000/v16/Solution.VC.db
+.vs/HAL9000/v16/.suo
+.vs/HAL9000/v16/Browse.VC.db
+.vs/HAL9000/v16/ipch/AutoPCH/9188cf6ac0537d49/THREAD.ipch
+HAL9000/headers/process_internal.h.bak
+HAL9000/src/process.c.bak
+HAL9000/src/syscall.c.bak
+*.bak
