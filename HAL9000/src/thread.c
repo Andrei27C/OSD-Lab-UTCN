@@ -354,6 +354,27 @@ ThreadCreateEx(
 
     ProcessInsertThreadInList(Process, pThread);
 
+    // Threads - 2
+    PTHREAD currentThread = GetCurrentThread();
+
+    if (currentThread != NULL) {
+        LOGL("As a result of [tid = %d, %s] creation:\n", pThread->Id, pThread->Name);
+        pThread->ParentThread = currentThread;
+
+        PTHREAD thread = currentThread;
+        while (thread != NULL)
+        {
+            INTR_STATE state;
+            LockAcquire(&thread->DescendentsLock, &state);
+            thread->NoOfDescendents++;
+            LockRelease(&thread->DescendentsLock, state);
+
+            LOGL("[tid = %d, %s] now has %d descendents.\n", thread->Id, thread->Name, thread->NoOfDescendents);
+            thread = thread->ParentThread;
+        }
+    }
+    //
+
     // the reference must be done outside _ThreadInit
     _ThreadReference(pThread);
 
@@ -819,6 +840,11 @@ _ThreadInit(
         LOGL("Thread was created at time %d.\n", pThread->CreationTime);
         //
 
+        // Threads - 2
+        LockInit(&pThread->DescendentsLock);
+        pThread->ParentThread = NULL;
+        //
+
         LockInit(&pThread->BlockLock);
 
         LockAcquire(&m_threadSystemData.AllThreadsLock, &oldIntrState);
@@ -831,7 +857,6 @@ _ThreadInit(
         InsertOrderedList(&m_threadSystemData.CreateTimeThreadsList, &pThread->CreationList, ThreadCompareCreationTime, NULL);
         LockRelease(&m_threadSystemData.CreateTimeThreadsLock, oldStateCreate);
         //
-
     }
     __finally
     {
@@ -1259,6 +1284,23 @@ _ThreadDestroy(
     RemoveEntryList(&pThread->CreationList);
     LockRelease(&m_threadSystemData.CreateTimeThreadsLock, oldStateCreate);
     //
+
+    // Threads - 2
+    PTHREAD currentThread = pThread->ParentThread;
+
+    if (currentThread != NULL) {
+        INTR_STATE state;
+
+        PTHREAD thread = currentThread;
+        while (thread != NULL) {
+            LockAcquire(&thread->DescendentsLock, &state);
+            thread->NoOfDescendents--;
+            LockRelease(&thread->DescendentsLock, state);
+            thread = thread->ParentThread;
+        }
+    }
+    //
+
 
     // This must be done before removing the thread from the process list, else
     // this may be the last thread and the process VAS will be freed by the time
